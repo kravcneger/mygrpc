@@ -10,7 +10,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-redis/cache/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/kravcneger/mygrpc/internal"
 	pb "github.com/kravcneger/mygrpc/mygrpc"
@@ -26,7 +25,6 @@ type server struct {
 	pb.UnimplementedMyGrpcServer
 	db    internal.Database
 	redis *redis.Client
-	cache *cache.Cache
 }
 
 func (s *server) CreateUser(ctx context.Context, user *pb.User) (*pb.StatusCode, error) {
@@ -102,12 +100,6 @@ func main() {
 		DB:       0,
 	})
 	defer serv.redis.Close()
-
-	// Initialize chache
-	serv.cache = cache.New(&cache.Options{
-		Redis:      serv.redis,
-		LocalCache: cache.NewTinyLFU(1000, time.Minute),
-	})
 
 	// Initialize postgress connection
 	dbUser, dbPassword, dbPort, dbName := os.Getenv("POSTGRES_USER"),
