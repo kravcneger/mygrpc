@@ -1,0 +1,43 @@
+version: '3.5'
+
+x-common-variables: &postgres-variables
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"
+  POSTGRES_DB: "mygrpc"
+  POSTGRES_PORT: "5432"
+  POSTGRES_HOST: "postgres"
+
+services:
+  postgres:
+    container_name: postgres_container
+    image: postgres
+    environment: *postgres-variables
+    command: postgres -c 'max_connections=50'
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./internal/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - mygrpc
+    restart: always 
+  redis:
+    image: "redis:alpine"
+    networks:
+      - mygrpc
+    ports:
+      - "6379:6379"
+  mygrpc:
+    image: mygrpc
+    environment: *postgres-variables
+    ports:
+      - "50051:50051"
+    networks:
+      - mygrpc
+    links:
+      - postgres
+      - redis
+
+networks:
+  mygrpc:
+    driver: bridge
+

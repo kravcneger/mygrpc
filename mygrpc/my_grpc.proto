@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+option go_package = "github.com/kravcneger/mygrpc/mygrpc";
+option java_multiple_files = true;
+
+package mygrpc;
+
+
+service MyGrpc {
+  rpc CreateUser(User) returns (StatusCode) {}
+
+  rpc DeleteUser(User) returns (StatusCode) {}
+
+  rpc ListUsers(Query) returns (stream User) {}
+}
+
+// The code of response
+message StatusCode {
+  int32 code = 1;
+}
+
+message Query{
+  string value = 1;
+}
+
+message User{
+  int64 id = 1;
+  string login = 2;
+  string email = 3;
+}
