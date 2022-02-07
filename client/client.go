@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"flag"
 	"fmt"
 	"io"
@@ -110,20 +109,4 @@ func main() {
 		log.Fatalf("unknown comand: %v", command)
 	}
 
-}
-
-func Initialize(username, password, port, database string) (*sql.DB, error) {
-	var db *sql.DB
-	dsn := fmt.Sprint("user=postgres password=postgres dbname=mygrpc host=localhost port=5433 sslmode=disable")
-	conn, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return db, err
-	}
-	db = conn
-	err = db.Ping()
-	if err != nil {
-		return db, err
-	}
-	log.Println("Database connection established")
-	return db, nil
 }
