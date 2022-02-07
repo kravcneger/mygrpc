@@ -53,7 +53,7 @@ func (s *server) CreateUser(ctx context.Context, user *pb.User) (*pb.StatusCode,
 }
 
 func (s *server) ListUsers(rect *pb.Query, stream pb.MyGrpc_ListUsersServer) error {
-	var users *[]internal.User
+	users := &[]internal.User{}
 	data, err := s.redis.Get(ctx, "list").Result()
 
 	if err != nil && err != redis.Nil {
