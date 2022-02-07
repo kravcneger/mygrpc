@@ -1,7 +1,6 @@
 Команды для запуска сервиса:
-
-  ` docker build -t mygrpc . ` \
-  `  docker-compose up `
+  
+  `  docker-compose up -d `
 
 Компиляция клиента grpc:
   
