@@ -1,8 +1,6 @@
 DROP DATABASE IF EXISTS mygrpc;
 CREATE DATABASE mygrpc;
-\c mygrpc
-
-CREATE TABLE UserLog
+CREATE TABLE mygrpc.UserLog
 (
     login String,
     email String,
