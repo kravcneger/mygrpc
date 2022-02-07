@@ -2,21 +2,21 @@ package internal
 
 import "database/sql"
 
-func (db Database) GetUsers() ([]User, error) {
+func (db Database) GetUsers() (*[]User, error) {
 	list := make([]User, 0)
 	rows, err := db.Conn.Query("SELECT * FROM users ORDER BY id DESC LIMIT 1000")
 	if err != nil {
-		return list, err
+		return &list, err
 	}
 	for rows.Next() {
 		user := User{}
 		err := rows.Scan(&user.Id, &user.Login, &user.Email)
 		if err != nil {
-			return list, err
+			return &list, err
 		}
 		list = append(list, user)
 	}
-	return list, nil
+	return &list, nil
 }
 
 func (db Database) CreateUser(login, email string) error {

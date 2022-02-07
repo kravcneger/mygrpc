@@ -28,7 +28,7 @@ var (
 
 type server struct {
 	pb.UnimplementedMyGrpcServer
-	db    internal.Database
+	db    *internal.Database
 	redis *redis.Client
 	kafka *kafka.Conn
 }
@@ -53,7 +53,7 @@ func (s *server) CreateUser(ctx context.Context, user *pb.User) (*pb.StatusCode,
 }
 
 func (s *server) ListUsers(rect *pb.Query, stream pb.MyGrpc_ListUsersServer) error {
-	users := make([]internal.User, 0)
+	var users *[]internal.User
 	data, err := s.redis.Get(ctx, "list").Result()
 
 	if err != nil && err != redis.Nil {
@@ -66,7 +66,7 @@ func (s *server) ListUsers(rect *pb.Query, stream pb.MyGrpc_ListUsersServer) err
 			return err
 		}
 		// add data to cache
-		json, err := json.Marshal(&users)
+		json, err := json.Marshal(users)
 		if err != nil {
 			return err
 		}
@@ -74,13 +74,13 @@ func (s *server) ListUsers(rect *pb.Query, stream pb.MyGrpc_ListUsersServer) err
 			return err
 		}
 	} else {
-		err = json.Unmarshal([]byte(data), &users)
+		err = json.Unmarshal([]byte(data), users)
 		if err != nil {
 			return err
 		}
 	}
 
-	for _, user := range users {
+	for _, user := range *users {
 		var protoUser *pb.User
 		protoUser = userToProtoUser(user)
 		if err := stream.Send(protoUser); err != nil {
@@ -123,7 +123,7 @@ func main() {
 		os.Getenv("POSTGRES_PASSWORD"),
 		os.Getenv("POSTGRES_PORT"),
 		os.Getenv("POSTGRES_DB")
-	serv.db, err = internal.Initialize(dbUser, dbPassword, dbPort, dbName)
+	serv.db, err = internal.InitializePostgres(dbUser, dbPassword, dbPort, dbName)
 	if err != nil {
 		log.Fatalf("Could not set up database: %v, dbUser - %s,	dbPassword - %s, dbPort - %s, dbName - %s",
 			err, dbUser, dbPassword, dbPort, dbName)
