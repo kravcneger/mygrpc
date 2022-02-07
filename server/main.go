@@ -13,7 +13,12 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/kravcneger/mygrpc/internal"
 	pb "github.com/kravcneger/mygrpc/mygrpc"
+	"github.com/segmentio/kafka-go"
 	"google.golang.org/grpc"
+)
+
+const (
+	KafkaTopic = "create_user"
 )
 
 var (
@@ -25,6 +30,7 @@ type server struct {
 	pb.UnimplementedMyGrpcServer
 	db    internal.Database
 	redis *redis.Client
+	kafka *kafka.Conn
 }
 
 func (s *server) CreateUser(ctx context.Context, user *pb.User) (*pb.StatusCode, error) {
@@ -32,6 +38,17 @@ func (s *server) CreateUser(ctx context.Context, user *pb.User) (*pb.StatusCode,
 	if err != nil {
 		return &pb.StatusCode{}, err
 	}
+	// Send the message to kafka
+	go func() {
+		massage := fmt.Sprintf(`{"login":"%s";"email":"%s";"create_at":"%s"}`, user.Login, user.Email, time.Now())
+		_, err = s.kafka.WriteMessages(
+			kafka.Message{Value: []byte(massage)},
+		)
+		if err != nil {
+			log.Fatal("failed kafka request:", err)
+		}
+	}()
+
 	return &pb.StatusCode{Code: 200}, nil
 }
 
@@ -113,12 +130,23 @@ func main() {
 	}
 	defer serv.db.Conn.Close()
 
+	// Initialize Kafka
+	serv.kafka = kafkaInit()
+
 	pb.RegisterMyGrpcServer(s, &serv)
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
 
+}
+
+func kafkaInit() *kafka.Conn {
+	conn, err := kafka.DialLeader(context.Background(), "tcp", "kafka:9092", KafkaTopic, 0)
+	if err != nil {
+		panic(err.Error())
+	}
+	return conn
 }
 
 func userToProtoUser(user internal.User) *pb.User {

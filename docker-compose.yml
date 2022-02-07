@@ -8,9 +8,25 @@ x-common-variables: &postgres-variables
   POSTGRES_HOST: "postgres"
 
 services:
+  mygrpc:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    environment: *postgres-variables
+    ports:
+      - "50051:50051"
+    networks:
+      - mygrpc
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - ch_server
+
   postgres:
     container_name: postgres_container
     image: postgres
+    hostname: postgres
     environment: *postgres-variables
     command: postgres -c 'max_connections=50'
     ports:
@@ -19,25 +35,63 @@ services:
       - ./internal/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - mygrpc
-    restart: always 
+    restart: always
+
   redis:
     image: "redis:alpine"
+    hostname: redis
     networks:
       - mygrpc
     ports:
       - "6379:6379"
-  mygrpc:
-    image: mygrpc
-    environment: *postgres-variables
-    ports:
-      - "50051:50051"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     networks:
       - mygrpc
-    links:
-      - postgres
-      - redis
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    hostname: kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_ADVERTISED_HOSTNAME: kafka
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - mygrpc
+
+  ch_server:
+    image: yandex/clickhouse-server
+    ports:
+      - "8123:8123"
+    volumes:
+      - "./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql"
+    depends_on:
+      - kafka
+    networks:
+        - mygrpc
+  ch_client:
+    image: yandex/clickhouse-client
+    entrypoint:
+      - /bin/sleep
+    command:
+      - infinity
+    networks:
+        - mygrpc
 
 networks:
   mygrpc:
     driver: bridge
-
